@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BEM Shot Counter — Integrated Ratio System</title>
+<style>
+  :root {
+    --bg:#eef1f6; --card-bg:#fff; --text:#111827; --muted:#6b7280; --border:#e3e7ee;
+    --blue:#2563eb; --blue-dark:#1d4ed8; --red:#dc2626; --red-dark:#b91c1c;
+    --green:#16a34a; --green-dark:#0f7a37; --amber:#b45309; --amber-bg:#fef3e2; --radius:16px;
+  }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg);
+    color:var(--text); margin:0; padding:14px 14px 40px; display:flex; justify-content:center; }
+  .app { width:100%; max-width:430px; display:flex; flex-direction:column; gap:11px; }
+  .app-header { position:relative; text-align:center; }
+  .app-header .logo { display:block; max-width:150px; height:auto; margin:0 auto 6px; }
+  .app-header h1 { font-size:21px; font-weight:800; margin:0; }
+  .help-btn { position:absolute; top:0; right:0; background:var(--blue); color:#fff; border:none;
+    font-size:14px; font-weight:700; padding:9px 14px; border-radius:20px; cursor:pointer; box-shadow:0 1px 4px rgba(37,99,235,.35); }
+  .card { background:var(--card-bg); border-radius:var(--radius); box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 16px rgba(16,24,40,.06); padding:14px 18px; }
+
+  #alert { display:none; border-radius:var(--radius); padding:14px 16px; color:#fff; font-weight:800; font-size:17px; background:var(--red); }
+  #alert.warn { background:var(--amber); }
+  #alert .sub { font-weight:600; font-size:13px; margin-top:3px; opacity:.95; }
+
+  .count-card { text-align:center; padding:16px 18px 20px; }
+  .count-caption { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  #count { font-size:76px; font-weight:800; line-height:1; margin:2px 0 0; font-variant-numeric:tabular-nums; }
+
+  .field-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .field-label { font-size:13px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .field-input-wrap { position:relative; }
+  input#pressureInput { font-size:24px; font-weight:700; padding:9px 44px 9px 12px; width:140px; text-align:right;
+    border-radius:12px; border:1.5px solid var(--border); color:var(--text); background:#fbfcfe; -moz-appearance:textfield; }
+  input#pressureInput[readonly] { background:#eafbf1; border-color:var(--green); color:var(--green-dark); }
+  .field-input-wrap .unit { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:13px; font-weight:700; color:var(--muted); pointer-events:none; }
+  #sourceLine { margin-top:10px; font-size:12.5px; font-weight:700; text-align:center; color:var(--muted); }
+  #sourceLine.live { color:var(--green-dark); } #sourceLine.manual { color:var(--blue-dark); } #sourceLine.warn { color:var(--amber); }
+
+  .callout { background:var(--amber-bg); border:1.5px solid #f2c98a; border-radius:14px; padding:12px 14px; font-size:13.5px; line-height:1.5; color:#5b3d12; }
+  .callout b { color:#3d2a0c; }
+  .callout .steps { margin:6px 0 0; padding-left:18px; }
+  .callout a { color:var(--blue-dark); font-weight:700; text-decoration:underline; cursor:pointer; }
+
+  .tankRow { display:flex; gap:11px; }
+  .tankRow .card { flex:1; text-align:center; padding:12px 10px; }
+  .tankTitle { font-size:13px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .tankW { font-size:26px; font-weight:800; margin:3px 0 0; }
+  .tankPct { font-size:14px; font-weight:700; color:var(--green-dark); }
+  .tankStatus { font-size:11.5px; font-weight:600; color:var(--muted); margin:5px 0 7px; min-height:14px; }
+  .tankStatus.ok { color:var(--green-dark); } .tankStatus.err { color:var(--red-dark); }
+  .tankRow button { width:100%; font-size:13px; padding:9px 6px; border-radius:11px; background:var(--blue-dark); color:#fff; }
+  .tankRow button.connected { background:var(--green); }
+
+  .ratio-head { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; text-align:center; }
+  .ratio-val { font-size:30px; font-weight:800; text-align:center; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
+  .ratio-state { text-align:center; font-weight:800; font-size:13.5px; }
+  .ratio-state.ok { color:var(--green-dark); } .ratio-state.bad { color:var(--red-dark); } .ratio-state.na { color:var(--muted); }
+  .used-line { font-size:12.5px; color:var(--muted); text-align:center; margin-top:4px; }
+
+  .sensor-row { display:flex; align-items:center; gap:10px; }
+  .sensor-row button { flex:0 0 auto; background:var(--blue-dark); color:#fff; font-size:13px; padding:10px 14px; border-radius:11px; }
+  .sensor-row button.connected { background:var(--green); }
+  .sensor-row .s { font-size:12px; font-weight:600; color:var(--muted); }
+
+  .controls { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  button { font-size:18px; font-weight:700; padding:15px 10px; border:none; border-radius:13px; color:#fff; cursor:pointer; }
+  button:active { transform:scale(.98); } button:disabled { opacity:.45; }
+  #startButton { background:var(--blue); } button.stop { background:var(--red); }
+
+  .util { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .util button { background:#eef2f9; color:var(--blue-dark); font-size:13px; font-weight:700; padding:10px 14px; border-radius:11px; }
+  #screenWarning { font-size:12.5px; font-weight:600; color:var(--amber); text-align:right; }
+
+  #wakelockVideo { position:fixed; width:1px; height:1px; opacity:0; pointer-events:none; }
+
+  #infoModal { display:none; position:fixed; inset:0; background:rgba(17,24,39,.55); z-index:50; padding:18px 12px; overflow-y:auto; }
+  #infoModal.open { display:block; }
+  .info-card { background:#fff; max-width:440px; margin:0 auto; border-radius:var(--radius); padding:18px 20px 24px; }
+  .info-card h2 { font-size:19px; margin:0 0 4px; } .info-card h3 { font-size:15px; margin:16px 0 4px; color:var(--blue-dark); }
+  .info-card p, .info-card li { font-size:14px; line-height:1.5; color:#333; } .info-card ul { margin:4px 0; padding-left:20px; }
+  .info-close { float:right; background:#eef2f9; color:var(--text); font-size:14px; font-weight:700; padding:7px 14px; border-radius:10px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="app-header">
+    <img class="logo" alt="Building Envelope Materials"
+      src="https://images.squarespace-cdn.com/content/v1/5c4b2ef3f8370a35be24ba52/1548708451041-W3T0M90QFGEGGYWZ1G94/BEM_logo_large_transparent.png?format=500w">
+    <h1>Shot Counter — Ratio</h1>
+    <button class="help-btn" id="infoButton">? Help</button>
+  </div>
+
+  <div id="alert"><span id="alertMain"></span><div class="sub" id="alertSub"></div></div>
+
+  <div class="card count-card">
+    <div class="count-caption">Count</div>
+    <div id="count">20</div>
+  </div>
+
+  <div class="card">
+    <div class="field-row">
+      <label for="pressureInput" class="field-label">Pressure</label>
+      <div class="field-input-wrap"><input id="pressureInput" type="number" value="200" step="1"><span class="unit">psi</span></div>
+    </div>
+    <div id="sourceLine" class="manual">Manual entry</div>
+  </div>
+
+  <div class="callout">
+    <b>Setup — read before connecting:</b>
+    <ol class="steps">
+      <li>Turn on each scale and connect them <b>one at a time</b> — tap <b>Connect A</b>, then in the Bluetooth list pick the scale (it shows up as <b>LMC210</b>); then <b>Connect B</b>.</li>
+      <li>Keep the phone <b>within a few feet of the scales</b> the whole time for the strongest signal.</li>
+    </ol>
+    <a id="calloutHelp">Full instructions &rarr;</a>
+  </div>
+
+  <div class="tankRow">
+    <div class="card">
+      <div class="tankTitle">A-side</div>
+      <div class="tankW" id="wA">--</div>
+      <div class="tankPct" id="pctA">&nbsp;</div>
+      <div class="tankStatus" id="statusA">Not connected</div>
+      <button id="scaleAButton">Connect A</button>
+    </div>
+    <div class="card">
+      <div class="tankTitle">B-side</div>
+      <div class="tankW" id="wB">--</div>
+      <div class="tankPct" id="pctB">&nbsp;</div>
+      <div class="tankStatus" id="statusB">Not connected</div>
+      <button id="scaleBButton">Connect B</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ratio-head">A : B Ratio (cumulative since Start)</div>
+    <div class="ratio-val" id="ratioVal">--</div>
+    <div class="ratio-state na" id="ratioState">Connect both scales</div>
+    <div class="used-line" id="usedLine">Used A: -- &nbsp;·&nbsp; Used B: --</div>
+  </div>
+
+  <div class="card sensor-row">
+    <button id="sensorButton">Connect Pressure Sensor</button>
+    <div class="s" id="sensorStatus">Optional — direct PSI</div>
+  </div>
+
+  <div class="controls">
+    <button id="startButton">Start</button>
+    <button id="stopButton" class="stop">Stop</button>
+  </div>
+
+  <div class="card util">
+    <button id="downloadBtn">Download data (CSV)</button>
+    <div id="screenWarning">Keep screen on</div>
+  </div>
+
+</div>
+
+<div id="infoModal">
+  <div class="info-card">
+    <button class="info-close" id="infoClose">Close</button>
+    <h2>How to use</h2>
+    <p>This app runs the spray shot-counter and watches the A/B mix ratio at the same time.</p>
+    <h3>Before you start</h3>
+    <ul>
+      <li>Use the <b>Bluefy</b> browser on iPhone/iPad, or <b>Chrome</b> on Android. Make sure the phone's <b>Bluetooth is turned on</b>, and <b>allow the browser to use Bluetooth</b> when it asks. Keep the screen on and this page in front — Bluetooth and the timer both pause if you switch apps or the screen sleeps.</li>
+      <li><b>Keep the phone within a few feet of the scales</b> for the whole job. Distance and metal are the main causes of dropouts. If it does drop, the app reconnects on its own.</li>
+      <li>Put one scale under each vessel; turn the cordless remotes off (a scale talks to only one thing at a time).</li>
+    </ul>
+    <h3>Connecting</h3>
+    <ul>
+      <li>Connect scales <b>one at a time</b>: power on the A vessel's scale only, tap <b>Connect A</b>, and pick it from the Bluetooth list — <b>each scale appears as "LMC210"</b> (connect one at a time so you know which is which); then do <b>Connect B</b>. Order does not change the ratio.</li>
+      <li><b>One scale is fine</b> — timing and the weight/percent readout work with a single scale. The ratio check just needs both.</li>
+      <li>The <b>pressure sensor</b> is optional; connect it to drive timing from measured PSI instead of vessel weight.</li>
+    </ul>
+    <h3>What drives the timer</h3>
+    <p>Best source available, in order: <b>pressure sensor → average of both scales → a single scale → manual</b>. The tempo is set at the top of each count (when it shows 20) and held steady through that count.</p>
+    <h3>The weight and percent</h3>
+    <p>Each vessel shows its weight and how full it is (100% = 53 lb, empty = 14.9 lb) so you can see at a glance how much is left. Note the empty figure of 14.9 lb is approximate and can run a bit higher or lower depending on the weight of the hose and other external factors, so treat the percentage as a rough guide rather than an exact number.</p>
+    <h3>The ratio</h3>
+    <p>Tap <b>Start</b> to set the baseline. The app then tracks the <b>total</b> each vessel has dispensed and shows the A:B ratio, which should stay near 1.00. It only alarms if the ratio stays off for a sustained stretch — a brief hose tug will not trip it, but a closed valve or clog will.</p>
+    <h3>Warnings</h3>
+    <ul>
+      <li>Warnings show on the red banner and beep <b>only when the count reaches the bottom</b>, so they never throw off a shot.</li>
+      <li><b>Scales disconnected:</b> if the app loses the scale feed while running, it warns you not to trust the count until it reconnects.</li>
+    </ul>
+    <h3>Saving data</h3>
+    <p>Weights are logged during a job. Tap <b>Download data (CSV)</b> to save the log for later review.</p>
+  </div>
+</div>
+
+<video id="wakelockVideo" playsinline loop muted>
+  <source src="data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wNDFtcDQyaXNvbWF2YzEAAAAIZnJlZQAAAChtZGF0AAAAAA==" type="video/mp4">
+</video>
+
+<script>
+/* ═══ BEM integrated RATIO build ═══
+   Timer priority: pressure sensor → avg(A,B) → single scale → manual.
+   Ratio: cumulative (total used A vs B) + sustained (must stay off) = tug-proof.
+   Warnings surface on the banner; audible beep only at the bottom of a count.
+   Auto-reconnect keeps scales/sensor alive through dropouts.               */
+
+// ── TUNABLES ──────────────────────────────────────────────────────────────
+const EMPTY_LB = 14.9, FULL_LB = 53.0;          // vessel range for % full
+const STALE_MS = 7000;                          // no data this long => not fresh (lenient)
+const RECONNECT_STALE_MS = 8000;                // connected but silent this long => force reconnect
+const RATIO_TOL = 0.12;                          // 12% divergence
+const RATIO_MIN_USED = 2.0;                      // lb used before ratio is judged
+const RATIO_SUSTAIN_MS = 8000;                   // divergence must persist this long to alarm
+const LOG_INTERVAL_MS = 3000;                    // data-log sample period
+
+// ── WAKE LOCK ─────────────────────────────────────────────────────────────
+let wakeLockEnabled=false, wakeLock=null; const wakelockVideo=document.getElementById("wakelockVideo");
+async function enableWakeLock(){ wakeLockEnabled=true;
+  if('wakeLock' in navigator){ try{ wakeLock=await navigator.wakeLock.request('screen'); }catch(e){ wakeLock=null; } }
+  wakelockVideo.play().catch(()=>setTimeout(()=>wakelockVideo.play().catch(()=>{}),100)); }
+async function disableWakeLock(){ wakeLockEnabled=false;
+  if(wakeLock){ try{ await wakeLock.release(); }catch(e){} wakeLock=null; } wakelockVideo.pause(); }
+document.addEventListener('visibilitychange', async ()=>{ if(wakeLockEnabled && document.visibilityState==='visible' && 'wakeLock' in navigator){ try{ wakeLock=await navigator.wakeLock.request('screen'); }catch(e){} } });
+
+// ── BEEP (Web Audio; unaffected by countdown speech) ──────────────────────
+let audioCtx=null;
+function ensureAudio(){ try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} }
+function beep(){ try{ ensureAudio(); if(!audioCtx) return; const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='square'; o.frequency.value=880; g.gain.value=0.18; o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime+0.3); }catch(e){} }
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+function mkScale(id){ return { id, device:null, connected:false, want:false, buf:'', weight:null, lastTime:0, baseline:null, lastKick:0 }; }
+const scales={ A:mkScale('A'), B:mkScale('B') };
+let sensor={ device:null, connected:false, want:false, psi:null, lastTime:0 };
+const pressureInput=document.getElementById("pressureInput");
+function sensorFresh(){ return sensor.connected && sensor.psi!==null && (Date.now()-sensor.lastTime)<STALE_MS; }
+function scaleFresh(s){ const sc=scales[s]; return sc.connected && sc.weight!==null && (Date.now()-sc.lastTime)<STALE_MS; }
+function anyLive(){ return sensorFresh()||scaleFresh('A')||scaleFresh('B'); }
+
+// ── CALIBRATION ────────────────────────────────────────────────────────────
+const CAL={ A:{a:2.353067e-8,b:2.109069e-3,c:2.108834e-2,hinge:20,slope:0.75775},
+            B:{a:2.353067e-8,b:2.109069e-3,c:2.108834e-2,hinge:20,slope:0.75775} };
+// Averaged trim, with a (0,0) anchor so a bare scale reads 0.0 (fixes the ~0.9 lb ghost weight).
+const TRIM_READING=[0, 10.085,15.630,20.970,25.375,30.160,34.390,39.420,44.605,50.060,55.585];
+const TRIM_ACTUAL =[0, 10,    15,    20,    25,    30,    35,    40,    45,    50,    55    ];
+function trim(r){ const X=TRIM_READING,Y=TRIM_ACTUAL,n=X.length;
+  if(r<=X[0]) return Y[0]+(r-X[0])*(Y[1]-Y[0])/(X[1]-X[0]);
+  if(r>=X[n-1]) return Y[n-1]+(r-X[n-1])*(Y[n-1]-Y[n-2])/(X[n-1]-X[n-2]);
+  for(let i=0;i<n-1;i++) if(r<=X[i+1]) return Y[i]+(r-X[i])*(Y[i+1]-Y[i])/(X[i+1]-X[i]); }
+function weightToPSI(lbs){ if(lbs>=FULL_LB) return 229; if(lbs<=EMPTY_LB) return 93;
+  return Math.min(229,Math.max(93, 0.10376*lbs*lbs - 3.81180*lbs + 132.87761)); }
+function tankPct(w){ if(w===null) return null; return Math.max(0,Math.min(100,(w-EMPTY_LB)/(FULL_LB-EMPTY_LB)*100)); }
+
+// ── ACTIVE SOURCE / PSI ────────────────────────────────────────────────────
+function activeSource(){
+  if(sensorFresh()) return { psi:sensor.psi, name:"Pressure sensor" };
+  if(scaleFresh('A') && scaleFresh('B')) { const aw=(scales.A.weight+scales.B.weight)/2; return { psi:weightToPSI(aw), name:"Scales A+B avg", aw }; }
+  if(scaleFresh('A')) return { psi:weightToPSI(scales.A.weight), name:"Scale A only" };
+  if(scaleFresh('B')) return { psi:weightToPSI(scales.B.weight), name:"Scale B only" };
+  return { psi:parseFloat(pressureInput.value), name:"Manual" };
+}
+function activePSI(){ return activeSource().psi; }
+
+// ── TIMING (rAF; pressure latched per count) ───────────────────────────────
+let current=20, running=false, phase=0, lastFrameTime=null, rafId=null, cyclePSI=200, criticalActive=false;
+function computeDelay(x){ if(!isFinite(x)||x<=0) return Infinity; return 484.07*Math.pow(x,-1.034); }
+function speakNumber(n){ if(!("speechSynthesis" in window)) return; window.speechSynthesis.cancel();
+  const m=new SpeechSynthesisUtterance(String(n)); m.rate=1.0; window.speechSynthesis.speak(m); }
+function frameStep(ts){
+  if(!running){ rafId=null; return; }
+  if(lastFrameTime===null) lastFrameTime=ts;
+  const dt=(ts-lastFrameTime)/1000; lastFrameTime=ts;
+  phase += dt/computeDelay(cyclePSI);
+  while(phase>=1.0){
+    phase-=1.0;
+    document.getElementById("count").textContent=current;
+    speakNumber(current);
+    current--;
+    if(current<0){ current=20; cyclePSI=activePSI(); if(criticalActive) beep(); }  // re-latch + alert only at bottom
+  }
+  rafId=requestAnimationFrame(frameStep);
+}
+function startCountdown(){ if(running) return; running=true; current=20; phase=0; lastFrameTime=null;
+  cyclePSI=activePSI(); setBaseline(); ensureAudio(); enableWakeLock(); rafId=requestAnimationFrame(frameStep); }
+function stopCountdown(){ running=false; disableWakeLock(); if(rafId!==null){ cancelAnimationFrame(rafId); rafId=null; }
+  if("speechSynthesis" in window) window.speechSynthesis.cancel(); }
+document.getElementById("startButton").addEventListener("click", ()=>{ ensureAudio();
+  if("speechSynthesis" in window){ window.speechSynthesis.cancel(); const m=new SpeechSynthesisUtterance("Starting"); m.rate=1.0; window.speechSynthesis.speak(m); }
+  startCountdown(); });
+document.getElementById("stopButton").addEventListener("click", stopCountdown);
+
+// ── CONSUMPTION / RATIO ────────────────────────────────────────────────────
+function setBaseline(){ for(const s of ['A','B']) scales[s].baseline = scaleFresh(s) ? scales[s].weight : null; }
+function usedOf(s){ const sc=scales[s]; return (sc.baseline!==null && sc.weight!==null) ? (sc.baseline-sc.weight) : null; }
+let ratioOffSince=null;
+function evalRatio(){
+  const uA=usedOf('A'), uB=usedOf('B');
+  if(uA===null || uB===null){ ratioOffSince=null; return { avail:false }; }
+  const div=Math.abs(uA-uB)/Math.max(uA,uB,0.0001);
+  const ratio=uB>0.0001 ? uA/uB : Infinity;
+  const enough=(uA>=RATIO_MIN_USED || uB>=RATIO_MIN_USED);
+  let alarm=false;
+  if(enough && div>RATIO_TOL){ if(ratioOffSince===null) ratioOffSince=Date.now(); if(Date.now()-ratioOffSince>=RATIO_SUSTAIN_MS) alarm=true; }
+  else ratioOffSince=null;
+  return { avail:true, uA, uB, div, ratio, enough, alarm };
+}
+
+// ── BLE: PT-800 sensor ─────────────────────────────────────────────────────
+const PT800_SERVICE=0xFCFD, PT800_PREFIX="DPGW", PRES_TAG="AT+PRES=", TAG_START=2, VAL_START=18;
+const sensorButton=document.getElementById("sensorButton"), sensorStatusEl=document.getElementById("sensorStatus");
+function setSensorStatus(msg){ sensorStatusEl.textContent=msg; }
+function decodePressure(dv){ if(dv.byteLength<VAL_START+2) return null; let t="";
+  for(let i=TAG_START;i<TAG_START+PRES_TAG.length;i++) t+=String.fromCharCode(dv.getUint8(i));
+  if(t!==PRES_TAG) return null; return dv.getUint16(VAL_START,false)/10; }
+function onPressureNotify(e){ const p=decodePressure(e.target.value); if(p===null) return; sensor.psi=p; sensor.lastTime=Date.now(); }
+async function attachSensor(server){ const svc=await server.getPrimaryService(PT800_SERVICE); const ch=await svc.getCharacteristic(PT800_SERVICE);
+  await ch.startNotifications(); ch.addEventListener("characteristicvaluechanged", onPressureNotify); }
+async function connectSensor(){
+  if(!navigator.bluetooth){ setSensorStatus("No Bluetooth"); return; }
+  try{ setSensorStatus("Choosing…");
+    sensor.device=await navigator.bluetooth.requestDevice({ filters:[{namePrefix:PT800_PREFIX}], optionalServices:[PT800_SERVICE] });
+    sensor.want=true; sensor.device.addEventListener("gattserverdisconnected", onSensorDrop);
+    setSensorStatus("Connecting…"); const server=await sensor.device.gatt.connect(); await attachSensor(server);
+    sensor.connected=true; sensorButton.textContent="Disconnect Sensor"; sensorButton.classList.add("connected"); setSensorStatus("Connected");
+  }catch(err){ setSensorStatus(err&&err.name==="NotFoundError"?"No device selected":"Error"); }
+}
+function onSensorDrop(){ sensor.connected=false; sensor.psi=null;
+  if(sensor.want && sensor.device){ setSensorStatus("Reconnecting…"); reconnectSensor(); }
+  else { sensorButton.textContent="Connect Pressure Sensor"; sensorButton.classList.remove("connected"); setSensorStatus("Optional — direct PSI"); } }
+async function reconnectSensor(){ if(!sensor.want||!sensor.device) return;
+  try{ const server=await sensor.device.gatt.connect(); await attachSensor(server); sensor.connected=true; setSensorStatus("Reconnected"); }
+  catch(e){ setTimeout(reconnectSensor,2000); } }
+sensorButton.addEventListener("click", ()=>{ if(sensor.device && sensor.device.gatt.connected){ sensor.want=false; sensor.device.gatt.disconnect(); } else connectSensor(); });
+
+// ── BLE: LMC-210 scales ────────────────────────────────────────────────────
+const TARGET_SERVICE='0003cdd0-0000-1000-8000-00805f9b0131', TARGET_CHAR='0003cdd1-0000-1000-8000-00805f9b0131';
+function bytesToAscii(dv){ let s=''; for(let i=0;i<dv.byteLength;i++){ const b=dv.getUint8(i);
+  if(b===0x0d) continue; if(b===0x0a){ s+='\n'; continue; } s+=(b>=0x20&&b<0x7f)?String.fromCharCode(b):'.'; } return s; }
+function parseFor(side){ return function(dv){ const sc=scales[side]; sc.buf+=bytesToAscii(dv); if(sc.buf.length>4000) sc.buf=sc.buf.slice(-4000);
+  const m=[...sc.buf.matchAll(/WEIG=[^+\-]*([+-]\d{6})/g)]; if(!m.length) return;
+  const raw=parseInt(m[m.length-1][1],10); const c=CAL[side];
+  let d=c.a*raw*raw+c.b*raw+c.c; d = d<=c.hinge ? d : c.hinge+c.slope*(d-c.hinge);
+  sc.weight=trim(d); sc.lastTime=Date.now(); }; }
+function scaleBtn(side){ return document.getElementById('scale'+side+'Button'); }
+function setScaleStatus(side,msg,cls){ const el=document.getElementById('status'+side); el.className='tankStatus '+(cls||''); el.textContent=msg; }
+async function attachScale(side,server){ const svc=await server.getPrimaryService(TARGET_SERVICE);
+  let ch; try{ ch=await svc.getCharacteristic(TARGET_CHAR); }catch(e){ const cs=await svc.getCharacteristics(); ch=cs.find(x=>x.properties.notify||x.properties.indicate); }
+  await ch.startNotifications(); ch.addEventListener("characteristicvaluechanged", ev=>parseFor(side)(ev.target.value)); }
+async function connectScale(side){ const sc=scales[side];
+  if(!navigator.bluetooth){ setScaleStatus(side,"No Bluetooth","err"); return; }
+  try{ setScaleStatus(side,"Searching…");
+    sc.device=await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices:[TARGET_SERVICE] });
+    sc.want=true; sc.device.addEventListener("gattserverdisconnected", ()=>onScaleDrop(side));
+    setScaleStatus(side,"Connecting…"); const server=await sc.device.gatt.connect(); await attachScale(side,server);
+    sc.connected=true; scaleBtn(side).textContent="Disconnect "+side; scaleBtn(side).classList.add("connected"); setScaleStatus(side,"Connected","ok");
+  }catch(err){ setScaleStatus(side, err&&err.name==="NotFoundError"?"No device selected":"Error", "err"); }
+}
+function onScaleDrop(side){ const sc=scales[side]; sc.connected=false; sc.weight=null;
+  if(sc.want && sc.device){ setScaleStatus(side,"Reconnecting…","err"); reconnectScale(side); }
+  else { scaleBtn(side).textContent="Connect "+side; scaleBtn(side).classList.remove("connected"); setScaleStatus(side,"Not connected"); } }
+async function reconnectScale(side){ const sc=scales[side]; if(!sc.want||!sc.device) return;
+  try{ const server=await sc.device.gatt.connect(); await attachScale(side,server); sc.connected=true; setScaleStatus(side,"Reconnected","ok"); }
+  catch(e){ setTimeout(()=>reconnectScale(side),2000); } }
+scaleBtn('A').addEventListener("click", ()=>{ const d=scales.A.device; if(d&&d.gatt.connected){ scales.A.want=false; d.gatt.disconnect(); } else connectScale('A'); });
+scaleBtn('B').addEventListener("click", ()=>{ const d=scales.B.device; if(d&&d.gatt.connected){ scales.B.want=false; d.gatt.disconnect(); } else connectScale('B'); });
+
+// Watchdog: connected but silent too long -> force a reconnect cycle.
+function reconnectWatchdog(){ const now=Date.now();
+  for(const s of ['A','B']){ const sc=scales[s];
+    if(sc.want && sc.connected && sc.weight!==null && (now-sc.lastTime)>RECONNECT_STALE_MS && (now-sc.lastKick)>6000){
+      sc.lastKick=now; try{ sc.device.gatt.disconnect(); }catch(e){} } } }
+setInterval(reconnectWatchdog, 1000);
+
+// ── DATA LOG ───────────────────────────────────────────────────────────────
+let dataLog=[]; let logSourceName="Manual", logPsi=NaN;
+function logSample(){ if(!running) return;
+  dataLog.push({ t:new Date().toISOString(), wA:scales.A.weight, wB:scales.B.weight,
+    uA:usedOf('A'), uB:usedOf('B'), psi:logPsi, src:logSourceName }); }
+setInterval(logSample, LOG_INTERVAL_MS);
+function num(v,d){ return (v===null||v===undefined||(typeof v==='number'&&!isFinite(v)))?'':(typeof v==='number'?v.toFixed(d):v); }
+document.getElementById("downloadBtn").addEventListener("click", ()=>{
+  if(!dataLog.length){ alert("No data yet — start a job first."); return; }
+  const cols=["time","weightA_lb","weightB_lb","pctA","pctB","usedA_lb","usedB_lb","psi","source"];
+  const rows=dataLog.map(d=>[d.t, num(d.wA,2), num(d.wB,2), num(tankPct(d.wA),0), num(tankPct(d.wB),0), num(d.uA,2), num(d.uB,2), num(d.psi,0), d.src]);
+  const csv=[cols.join(","), ...rows.map(r=>r.join(","))].join("\n");
+  const blob=new Blob([csv],{type:"text/csv"}); const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="bem-ratio-log-"+Date.now()+".csv"; a.click(); URL.revokeObjectURL(url);
+});
+
+// ── UI / WARNINGS (interval) ───────────────────────────────────────────────
+const sourceLine=document.getElementById("sourceLine"), alertEl=document.getElementById("alert");
+function updateUI(){
+  // tanks: weight + %
+  for(const s of ['A','B']){ const sc=scales[s], w=sc.weight, fresh=scaleFresh(s);
+    document.getElementById('w'+s).textContent = w!==null ? w.toFixed(1)+' lb' : '--';
+    const p=tankPct(w); document.getElementById('pct'+s).innerHTML = (w!==null && p!==null) ? p.toFixed(0)+'% full' : '&nbsp;';
+    if(fresh) setScaleStatus(s,"Connected","ok"); }
+
+  // active source -> pressure field
+  const src=activeSource(); logSourceName=src.name; logPsi=isFinite(src.psi)?src.psi:NaN;
+  const live = sensorFresh()||scaleFresh('A')||scaleFresh('B');
+  if(live){ pressureInput.readOnly=true;
+    pressureInput.value = (running?cyclePSI:src.psi).toFixed(0);
+    sourceLine.textContent = "● " + src.name + (running ? " · tempo set each count" : " · " + src.psi.toFixed(0) + " psi");
+    sourceLine.className="live";
+  } else { pressureInput.readOnly=false; sourceLine.textContent="Manual entry"; sourceLine.className="manual"; }
+
+  // ratio
+  const r=evalRatio(); const rv=document.getElementById("ratioVal"), rs=document.getElementById("ratioState"), ul=document.getElementById("usedLine");
+  if(!r.avail){ rv.textContent="--"; rs.textContent=(scaleFresh('A')||scaleFresh('B'))?"Connect both scales for ratio":"Connect both scales"; rs.className="ratio-state na"; ul.textContent="Used A: -- · Used B: --"; }
+  else { rv.textContent = isFinite(r.ratio)? r.ratio.toFixed(2)+" : 1" : "A only";
+    ul.textContent = "Used A: "+r.uA.toFixed(2)+" lb · Used B: "+r.uB.toFixed(2)+" lb";
+    if(!r.enough){ rs.textContent="OK (warming up)"; rs.className="ratio-state na"; }
+    else if(r.alarm){ rs.textContent="⚠ OFF by "+(r.div*100).toFixed(0)+"% — check valves/gun"; rs.className="ratio-state bad"; }
+    else { rs.textContent="OK ("+(r.div*100).toFixed(0)+"%)"; rs.className="ratio-state ok"; } }
+
+  // warnings
+  const warnings=[]; let critical=false;
+  if(running && !live){ warnings.push("SCALES DISCONNECTED — do not trust the count"); critical=true; }
+  if(r.avail && r.alarm){ warnings.push("A:B ratio off >"+(RATIO_TOL*100).toFixed(0)+"% — possible closed valve or clog"); critical=true; }
+  criticalActive=critical;
+  if(!warnings.length){ alertEl.style.display="none"; }
+  else { alertEl.style.display="block"; alertEl.className = critical?"":"warn";
+    document.getElementById("alertMain").textContent=(critical?"⚠ ":"")+warnings[0];
+    document.getElementById("alertSub").textContent=warnings.slice(1).join("  ·  ");
+    if(!running && critical) beep();  // if stopped, no count boundary to gate on
+  }
+}
+setInterval(updateUI, 300); updateUI();
+
+// ── INFO MODAL ─────────────────────────────────────────────────────────────
+const infoModal=document.getElementById("infoModal");
+function openInfo(){ infoModal.classList.add("open"); } function closeInfo(){ infoModal.classList.remove("open"); }
+document.getElementById("infoButton").addEventListener("click", openInfo);
+document.getElementById("calloutHelp").addEventListener("click", openInfo);
+document.getElementById("infoClose").addEventListener("click", closeInfo);
+infoModal.addEventListener("click", e=>{ if(e.target===infoModal) closeInfo(); });
+</script>
+</body>
+</html>
