@@ -19,6 +19,12 @@
   .app-header h1 { font-size:21px; font-weight:800; margin:0; }
   .help-btn { position:absolute; top:0; right:0; background:var(--blue); color:#fff; border:none;
     font-size:14px; font-weight:700; padding:9px 14px; border-radius:20px; cursor:pointer; box-shadow:0 1px 4px rgba(37,99,235,.35); }
+  .set-btn { position:absolute; top:0; left:0; width:38px; height:38px; border-radius:50%; background:#fff;
+    color:var(--blue-dark); border:1.5px solid var(--border); font-size:19px; cursor:pointer; line-height:1; box-shadow:0 1px 3px rgba(16,24,40,.08); }
+  #settingsModal { display:none; position:fixed; inset:0; background:rgba(17,24,39,.55); z-index:50; padding:18px 12px; overflow-y:auto; }
+  #settingsModal.open { display:block; }
+  #voiceSelect, #langSelect { width:100%; padding:10px; font-size:15px; border-radius:8px; border:1.5px solid var(--border); margin-top:4px; }
+  #voiceTest { margin-top:12px; background:var(--blue-dark); color:#fff; font-size:14px; font-weight:700; padding:10px 16px; border-radius:11px; }
   .card { background:var(--card-bg); border-radius:var(--radius); box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 16px rgba(16,24,40,.06); padding:14px 18px; }
 
   #alert { display:none; border-radius:var(--radius); padding:14px 16px; color:#fff; font-weight:800; font-size:17px; background:var(--red); }
@@ -80,7 +86,29 @@
   #infoModal.open { display:block; }
   .info-card { background:#fff; max-width:440px; margin:0 auto; border-radius:var(--radius); padding:18px 20px 24px; }
   .info-card h2 { font-size:19px; margin:0 0 4px; } .info-card h3 { font-size:15px; margin:16px 0 4px; color:var(--blue-dark); }
-  .info-card p, .info-card li { font-size:14px; line-height:1.5; color:#333; } .info-card ul { margin:4px 0; padding-left:20px; }
+  .info-card p, .info-card li { font-size:14px; line-height:1.5; color:#333; } .info-card ul, .info-card ol { margin:4px 0; padding-left:20px; }
+  /* Collapsible homepage setup box */
+  details.callout > summary { list-style:none; cursor:pointer; font-weight:700; color:#5b3d12; }
+  details.callout > summary::-webkit-details-marker { display:none; }
+  details.callout > summary::before { content:"\25B8  "; }
+  details.callout[open] > summary::before { content:"\25BE  "; }
+  details.callout .cbody { margin-top:8px; }
+  details.callout .steps { margin:0; }
+  /* Help accordion (table of contents) */
+  .acc { border:1px solid var(--border); border-radius:10px; margin:8px 0; overflow:hidden; }
+  .acc > summary { list-style:none; cursor:pointer; padding:12px 14px; font-weight:700; font-size:15px; background:#f5f8fd; color:var(--text); }
+  .acc > summary::-webkit-details-marker { display:none; }
+  .acc > summary::before { content:"\25B8  "; color:var(--blue-dark); }
+  .acc[open] > summary::before { content:"\25BE  "; }
+  .acc .abody { padding:8px 14px 12px; }
+  .sub-acc { border-top:1px solid var(--border); }
+  .sub-acc > summary { list-style:none; cursor:pointer; padding:9px 14px 9px 18px; font-weight:600; font-size:13.5px; color:var(--blue-dark); background:#fbfcfe; }
+  .sub-acc > summary::-webkit-details-marker { display:none; }
+  .sub-acc > summary::before { content:"\25B8  "; }
+  .sub-acc[open] > summary::before { content:"\25BE  "; }
+  .sub-acc .sbody { padding:6px 14px 10px 18px; }
+  .ts-item { font-size:13px; line-height:1.45; margin:0 0 9px; }
+  .ts-item b:first-child { display:block; color:var(--text); }
   .info-close { float:right; background:#eef2f9; color:var(--text); font-size:14px; font-weight:700; padding:7px 14px; border-radius:10px; }
 </style>
 </head>
@@ -91,71 +119,80 @@
   <div class="app-header">
     <img class="logo" alt="Building Envelope Materials"
       src="https://images.squarespace-cdn.com/content/v1/5c4b2ef3f8370a35be24ba52/1548708451041-W3T0M90QFGEGGYWZ1G94/BEM_logo_large_transparent.png?format=500w">
-    <h1>Shot Counter — Ratio</h1>
-    <button class="help-btn" id="infoButton">? Help</button>
+    <h1 data-i18n="title">Shot Counter — Ratio</h1>
+    <button class="set-btn" id="settingsButton" title="Language / Idioma / Lang">&#127760;</button>
+    <button class="help-btn" id="infoButton" data-i18n="help">? Help</button>
   </div>
 
   <div id="alert"><span id="alertMain"></span><div class="sub" id="alertSub"></div></div>
 
   <div class="card count-card">
-    <div class="count-caption">Count</div>
+    <div class="count-caption" data-i18n="count">Count</div>
     <div id="count">20</div>
   </div>
 
   <div class="card">
     <div class="field-row">
-      <label for="pressureInput" class="field-label">Pressure</label>
+      <label for="pressureInput" class="field-label" data-i18n="pressure">Pressure</label>
       <div class="field-input-wrap"><input id="pressureInput" type="number" value="200" step="1"><span class="unit">psi</span></div>
     </div>
     <div id="sourceLine" class="manual">Manual entry</div>
   </div>
 
-  <div class="callout">
-    <b>Setup — read before connecting:</b>
-    <ol class="steps">
-      <li>Turn on each scale and connect them <b>one at a time</b> — tap <b>Connect A</b>, then in the Bluetooth list pick the scale (it shows up as <b>LMC210</b>); then <b>Connect B</b>.</li>
-      <li>Keep the phone <b>within a few feet of the scales</b> the whole time for the strongest signal.</li>
-    </ol>
-    <a id="calloutHelp">Full instructions &rarr;</a>
-  </div>
+  <details class="callout">
+    <summary data-i18n="calloutSummary">How to set up &amp; connect the scales</summary>
+    <div class="cbody">
+      <ol class="steps" data-i18n-html="calloutSteps">
+        <li>Open in <b>Bluefy</b> (iPhone) or <b>Chrome</b> (Android) with <b>Bluetooth ON</b>; allow Bluetooth when asked.</li>
+        <li><b>Turn the scale on</b> — hold its power button until the display lights up. Turn the cordless remote off.</li>
+        <li>Tap <b>Connect A</b>. A Bluetooth list pops up — tap the scale named <b>LMC-210</b>, then Connect.</li>
+        <li>Do the same with <b>Connect B</b> for the second scale. Connect them <b>one at a time</b> so each lands on the right side.</li>
+        <li>Keep the phone <b>within a few feet of the scales</b> for the strongest signal.</li>
+      </ol>
+      <a id="calloutHelp" data-i18n="moreHelp">More help &rarr;</a>
+    </div>
+  </details>
 
   <div class="tankRow">
     <div class="card">
-      <div class="tankTitle">A-side</div>
+      <div class="tankTitle" data-i18n="tankA">A-side</div>
       <div class="tankW" id="wA">--</div>
       <div class="tankPct" id="pctA">&nbsp;</div>
-      <div class="tankStatus" id="statusA">Not connected</div>
+      <div class="tankStatus" id="statusA" data-i18n="stNotConnected">Not connected</div>
       <button id="scaleAButton">Connect A</button>
     </div>
     <div class="card">
-      <div class="tankTitle">B-side</div>
+      <div class="tankTitle" data-i18n="tankB">B-side</div>
       <div class="tankW" id="wB">--</div>
       <div class="tankPct" id="pctB">&nbsp;</div>
-      <div class="tankStatus" id="statusB">Not connected</div>
+      <div class="tankStatus" id="statusB" data-i18n="stNotConnected">Not connected</div>
       <button id="scaleBButton">Connect B</button>
     </div>
   </div>
 
   <div class="card">
-    <div class="ratio-head">A : B Ratio (cumulative since Start)</div>
+    <div class="ratio-head" data-i18n="ratioHead">A : B Ratio (cumulative since Start)</div>
     <div class="ratio-val" id="ratioVal">--</div>
-    <div class="ratio-state na" id="ratioState">Connect both scales</div>
+    <div class="ratio-state na" id="ratioState" data-i18n="ratioConnectBoth">Connect both scales</div>
     <div class="used-line" id="usedLine">Used A: -- &nbsp;·&nbsp; Used B: --</div>
   </div>
 
-  <div class="card sensor-row">
-    <button id="sensorButton">Connect Pressure Sensor</button>
-    <div class="s" id="sensorStatus">Optional — direct PSI</div>
+  <div class="card devices">
+    <div class="dev-label" data-i18n="devSensors">Pressure sensors — optional, one per hose (connect one at a time)</div>
+    <div class="dev-grid">
+      <div><button id="sensorAButton" class="device">Sensor A</button><div id="sensorAStatus" class="status muted" data-i18n="optional">Optional</div></div>
+      <div><button id="sensorBButton" class="device">Sensor B</button><div id="sensorBStatus" class="status muted" data-i18n="optional">Optional</div></div>
+    </div>
   </div>
 
   <div class="controls">
-    <button id="startButton">Start</button>
-    <button id="stopButton" class="stop">Stop</button>
+    <button id="startButton" data-i18n="start">Start</button>
+    <button id="stopButton" class="stop" data-i18n="stop">Stop</button>
   </div>
 
   <div class="card util">
-    <button id="downloadBtn">Download data (CSV)</button>
-    <div id="screenWarning">Keep screen on</div>
+    <button id="downloadBtn" data-i18n="download">Download data (CSV)</button>
+    <div id="screenWarning" data-i18n="screenOn">Keep screen on</div>
   </div>
 
 </div>
@@ -163,33 +200,124 @@
 <div id="infoModal">
   <div class="info-card">
     <button class="info-close" id="infoClose">Close</button>
-    <h2>How to use</h2>
-    <p>This app runs the spray shot-counter and watches the A/B mix ratio at the same time.</p>
-    <h3>Before you start</h3>
-    <ul>
-      <li>Use the <b>Bluefy</b> browser on iPhone/iPad, or <b>Chrome</b> on Android. Make sure the phone's <b>Bluetooth is turned on</b>, and <b>allow the browser to use Bluetooth</b> when it asks. Keep the screen on and this page in front — Bluetooth and the timer both pause if you switch apps or the screen sleeps.</li>
-      <li><b>Keep the phone within a few feet of the scales</b> for the whole job. Distance and metal are the main causes of dropouts. If it does drop, the app reconnects on its own.</li>
-      <li>Put one scale under each vessel; turn the cordless remotes off (a scale talks to only one thing at a time).</li>
-    </ul>
-    <h3>Connecting</h3>
-    <ul>
-      <li>Connect scales <b>one at a time</b>: power on the A vessel's scale only, tap <b>Connect A</b>, and pick it from the Bluetooth list — <b>each scale appears as "LMC210"</b> (connect one at a time so you know which is which); then do <b>Connect B</b>. Order does not change the ratio.</li>
-      <li><b>One scale is fine</b> — timing and the weight/percent readout work with a single scale. The ratio check just needs both.</li>
-      <li>The <b>pressure sensor</b> is optional; connect it to drive timing from measured PSI instead of vessel weight.</li>
-    </ul>
-    <h3>What drives the timer</h3>
-    <p>Best source available, in order: <b>pressure sensor → average of both scales → a single scale → manual</b>. The tempo is set at the top of each count (when it shows 20) and held steady through that count.</p>
-    <h3>The weight and percent</h3>
-    <p>Each vessel shows its weight and how full it is (100% = 53 lb, empty = 14.9 lb) so you can see at a glance how much is left. Note the empty figure of 14.9 lb is approximate and can run a bit higher or lower depending on the weight of the hose and other external factors, so treat the percentage as a rough guide rather than an exact number.</p>
-    <h3>The ratio</h3>
-    <p>Tap <b>Start</b> to set the baseline. The app then tracks the <b>total</b> each vessel has dispensed and shows the A:B ratio, which should stay near 1.00. It only alarms if the ratio stays off for a sustained stretch — a brief hose tug will not trip it, but a closed valve or clog will.</p>
-    <h3>Warnings</h3>
-    <ul>
-      <li>Warnings show on the red banner and beep <b>only when the count reaches the bottom</b>, so they never throw off a shot.</li>
-      <li><b>Scales disconnected:</b> if the app loses the scale feed while running, it warns you not to trust the count until it reconnects.</li>
-    </ul>
-    <h3>Saving data</h3>
-    <p>Weights are logged during a job. Tap <b>Download data (CSV)</b> to save the log for later review.</p>
+    <h2>Help</h2>
+
+    <details class="acc" open><summary>1. Phone setup (do this first)</summary><div class="abody">
+      <ul>
+        <li>Use the <b>Bluefy</b> browser on iPhone/iPad, or <b>Chrome</b> on Android.</li>
+        <li>Turn the phone's <b>Bluetooth ON</b>, and <b>allow the browser to use Bluetooth</b> when it asks.</li>
+        <li>Keep the screen on and this page in front — Bluetooth and the timer both pause if you switch apps or the screen sleeps.</li>
+      </ul>
+    </div></details>
+
+    <details class="acc" open><summary>2. Turn on &amp; connect the scales</summary><div class="abody">
+      <ol>
+        <li><b>Turn the scale on</b> — hold its power button until the display lights up. Turn the cordless remote off (a scale talks to only one thing at a time).</li>
+        <li>In the app, tap <b>Connect A</b>. A Bluetooth list pops up — tap the scale named <b>LMC-210</b>, then Connect/Pair.</li>
+        <li>Repeat with <b>Connect B</b> for the second scale. Always connect <b>one at a time</b> so you know which scale is A and which is B (both show the same name).</li>
+        <li>Keep the phone <b>within a few feet of the scales</b> the whole job. If a scale drops, the app reconnects on its own.</li>
+      </ol>
+      <p>The <b>pressure sensors</b> are optional — one per hose. Connect <b>Sensor A</b> and <b>Sensor B</b> (one at a time) to drive timing from measured PSI instead of vessel weight. Both are logged to the CSV.</p>
+    </div></details>
+
+    <details class="acc"><summary>What drives the timer</summary><div class="abody">
+      <p>Best source available, in order: <b>pressure sensor → average of both scales → a single scale → manual</b>. The tempo is set at the top of each count (when it shows 20) and held steady through that count.</p>
+      <p><b>One scale works too</b> — timing and the weight/percent readout run on a single scale; the ratio check just needs both.</p>
+    </div></details>
+
+    <details class="acc"><summary>Weight &amp; percent full</summary><div class="abody">
+      <p>Each vessel shows its weight and how full it is (100% = 53 lb, empty = 14.9 lb). The empty figure is approximate and shifts a bit with the hose weight and other factors, so treat the percent as a rough guide, not an exact number.</p>
+    </div></details>
+
+    <details class="acc"><summary>The A:B ratio</summary><div class="abody">
+      <p>Tap <b>Start</b> to set the baseline. The app tracks the <b>total</b> each vessel has dispensed and shows the A:B ratio, which should stay near 1.00. It only alarms if the ratio stays off for a sustained stretch — a brief hose tug won't trip it, but a closed valve or clog will.</p>
+    </div></details>
+
+    <details class="acc"><summary>Warnings</summary><div class="abody">
+      <ul>
+        <li>Warnings show on the banner and beep <b>only when the count reaches the bottom</b>, so they never throw off a shot.</li>
+        <li><b>Scales not updating:</b> if the feed stops while running, the count keeps going on the last pressure and warns you it isn't live.</li>
+      </ul>
+    </div></details>
+
+    <details class="acc"><summary>Saving data (CSV)</summary><div class="abody">
+      <p>Weights are logged during a job. Tap <b>Download data (CSV)</b> to save or share the log. On a phone it opens the share sheet (save to Files, email, etc.); on a computer it downloads to your Downloads folder. Download before closing the page — the log isn't kept after that.</p>
+    </div></details>
+
+    <details class="acc"><summary>Job-site troubleshooting (foam, gun, fill, safety)</summary><div class="abody">
+      <p style="font-size:12px;color:#666;margin:0 0 6px;">Field problems and fixes — not app settings.</p>
+
+      <details class="sub-acc"><summary>Gun, nozzle, hose &amp; pressure</summary><div class="sbody">
+        <div class="ts-item"><b>A or B side not dispensing</b>Cross-contamination — gun left on the ground with the nozzle on, or not cleaned. <b>Fix:</b> clean the needle valves and gun cup, scraping crud with a screwdriver. If that fails, flush the whip: close gun valves → dispense residual into garbage → disconnect whip → add SurfX to fill whip → reconnect → open valves → sit 15 min → dispense into a garbage bag until both sides run clear.</div>
+        <div class="ts-item"><b>Bubbles in the whip</b>Material is out or the line is clogged. <b>Fix:</b> refill/replace material or clear the clog and flush the whip (see above).</div>
+        <div class="ts-item"><b>Material dribbling out of the gun</b>Flow-rate lever is vertical. <b>Fix:</b> turn the lever to horizontal.</div>
+        <div class="ts-item"><b>Gun drips foam after releasing the trigger</b>Older needle valves can't handle a fresh cylinder's high pressure. <b>Fix:</b> on the first few shots from a new cylinder, shut the gun valves right after each shot.</div>
+        <div class="ts-item"><b>Foam leaks out of the nozzle bottom</b>Gasket missing → replace the gasket. Cracked cup around the needle valves → replace the gun. Loose nozzle from an old gasket → replace the gasket and tighten the nozzle until it clicks.</div>
+        <div class="ts-item"><b>Nozzle hard to twist onto the gun</b>Old, hardened gasket. <b>Fix:</b> replace the gun gasket.</div>
+        <div class="ts-item"><b>Valve leaking</b>Gun was dropped and the valve body cracked. <b>Fix:</b> swap in the backup hose and send the gun for repair.</div>
+        <div class="ts-item"><b>Pressure not dropping</b>Valves closed or defective gun/hose. <b>Fix:</b> check all valves are open → do a clearing shot and look for a clear stream → if spitting, clean all components and replace the hose with the backup.</div>
+      </div></details>
+
+      <details class="sub-acc"><summary>Fill quality — over/underfill &amp; ratio</summary><div class="sbody">
+        <div class="ts-item"><b>Overfill</b>Hot metal studs → don't shoot if studs are over 90°F. Baseboard heat on → turn heat off first thing entering a room.</div>
+        <div class="ts-item"><b>Overfill — consistent (same every cavity)</b>Unidentified obstruction. <b>Fix:</b> assume blocking; shoot under it and 16" over the suspected blocking.</div>
+        <div class="ts-item"><b>Overfill — inconsistent</b>Unidentified obstruction. <b>Fix:</b> shoot more, shorter body shots — around 20".</div>
+        <div class="ts-item"><b>Underfill</b>Pressure not updated after 8 cavities → always update pressure after 8 cavities. No supervisor QC → add random QC checks.</div>
+        <div class="ts-item"><b>Overfill / underfill</b>Improper calibration → shoot a full bottom lift and base calibration on multiple cavities. Variable cavity depth → expect multiple void-filling shots; don't compensate by overfilling.</div>
+        <div class="ts-item"><b>Off-ratio — residual A or B left over</b>Aging blowing agent causes variable flow. <b>Fix:</b> close the heavier side's cylinder valve one full turn at a time until ending weights match, or use flow restrictors.</div>
+      </div></details>
+
+      <details class="sub-acc"><summary>Calibration</summary><div class="sbody">
+        <div class="ts-item"><b>Overfill while calibrating</b>Calibrated under a window or other restricted cavity. <b>Fix:</b> always calibrate in an unrestricted cavity. Use a 7 count for a standard cavity, 2 count for a shallow one.</div>
+        <div class="ts-item"><b>Improper calibration (over/underfill)</b><b>Fix:</b> shoot an entire bottom lift and base the calibration on multiple cavities.</div>
+      </div></details>
+
+      <details class="sub-acc"><summary>Cavity &amp; shooting technique</summary><div class="sbody">
+        <div class="ts-item"><b>Blowback</b>Shooting into a stud, fireblock, or bunched fiberglass. <b>Fix:</b> always spritz first; drill a new hole nearby and fill from there.</div>
+        <div class="ts-item"><b>Can't find the studs</b>Wire lath. <b>Fix:</b> estimate the cavity center 8" from the wall corner, mark remaining cavities 16" apart from there; shoot test shots in the first lift to validate.</div>
+        <div class="ts-item"><b>Horizontal top not "tombstone" shaped</b>Blocking in the cavity. <b>Fix:</b> fill 6–12" below the blocking, then a finishing shot to complete; shoot 16–18" above the blocking for the top of the wall.</div>
+        <div class="ts-item"><b>Variable-depth cavity</b>Basement wall (CMU bottom, standard top) → calibrate bottom and top separately; shoot bottom in the first 2 lifts, top in the second 2. Older solid-masonry wall → shoot normally but expect more voids.</div>
+        <div class="ts-item"><b>Foam sprayed on the wall</b>Nozzle not securely attached → replace gasket, tighten until it clicks. Bent needle breaking off → never bend the needle when inserting it in the hole.</div>
+      </div></details>
+
+      <details class="sub-acc"><summary>Material not showing on IR</summary><div class="sbody">
+        <div class="ts-item"><b>Drilled through the sheathing into a ventilation channel</b><b>Fix:</b> apply minimal pressure when drilling through fiberglass.</div>
+        <div class="ts-item"><b>Double-layer drywall (shallow cavity)</b><b>Fix:</b> use 2 counts on a standard-width cavity, 1 count on narrower cavities.</div>
+        <div class="ts-item"><b>Only one component shot into the wall</b><b>Fix:</b> remove the wall surface, remove the single component, and repair the wall.</div>
+      </div></details>
+
+      <details class="sub-acc"><summary>Jobsite, tenant property &amp; safety</summary><div class="sbody">
+        <div class="ts-item"><b>Smoke</b>Heat left on — heaters melting the drape. <b>Fix:</b> remove the drape immediately, turn off the heat, let it cool. Always turn heat off when entering a room.</div>
+        <div class="ts-item"><b>Foam in an outlet</b>Cover not removed, or outlet draped. <b>Fix:</b> turn off the breaker → chip foam out with a plastic scraper → clean the contacts with a screwdriver.</div>
+        <div class="ts-item"><b>Foam tracks on the floor</b>Foam on the bottom of a shoe. <b>Fix:</b> cover shoe bottoms with masking tape.</div>
+        <div class="ts-item"><b>Broken tenant objects</b>Hose not lying flat, or tools set on furniture. <b>Fix:</b> apologize, replace if possible, otherwise pay double the value. Keep the hose flat; never set tools on furniture.</div>
+        <div class="ts-item"><b>Tape falls off the wall</b>No-stick paint. <b>Fix:</b> tape just before shooting.</div>
+        <div class="ts-item"><b>Items lost</b>Keep tools and phone only in the caddy-bag pockets or on window sills.</div>
+      </div></details>
+
+      <details class="sub-acc"><summary>App</summary><div class="sbody">
+        <div class="ts-item"><b>App not updating</b>A local change wasn't synced. <b>Fix:</b> go to the menu and press "Reset changes."</div>
+      </div></details>
+
+    </div></details>
+
+  </div>
+</div>
+
+<div id="settingsModal">
+  <div class="info-card">
+    <button class="info-close" id="settingsClose" data-i18n="close">Close</button>
+    <h2 data-i18n="setTitle">Language &amp; Voice</h2>
+    <label for="langSelect" data-i18n="langLabel" style="font-weight:700;font-size:13px;">Language</label>
+    <select id="langSelect">
+      <option value="en">English</option>
+      <option value="es">Español</option>
+      <option value="ht">Kreyòl Ayisyen</option>
+    </select>
+    <p data-i18n="setDesc" style="margin-top:14px;">Pick the app language and the countdown voice. Saved on this phone.</p>
+    <label for="voiceSelect" data-i18n="voiceLabel" style="font-weight:700;font-size:13px;">Countdown voice</label>
+    <select id="voiceSelect"></select>
+    <div><button id="voiceTest" data-i18n="voiceTest">Test voice</button></div>
   </div>
 </div>
 
@@ -230,13 +358,15 @@ function beep(){ try{ ensureAudio(); if(!audioCtx) return; const o=audioCtx.crea
   o.start(); o.stop(audioCtx.currentTime+0.3); }catch(e){} }
 
 // ── STATE ─────────────────────────────────────────────────────────────────
-function mkScale(id){ return { id, device:null, connected:false, want:false, buf:'', weight:null, lastTime:0, baseline:null, lastKick:0 }; }
+function mkScale(id){ return { id, device:null, connected:false, want:false, buf:'', weight:null, lastTime:0, baseline:null, lastKick:0, model:null }; }
 const scales={ A:mkScale('A'), B:mkScale('B') };
-let sensor={ device:null, connected:false, want:false, psi:null, lastTime:0 };
+function mkSensor(id){ return { id, device:null, connected:false, want:false, psi:null, lastTime:0 }; }
+const sensors={ A:mkSensor('A'), B:mkSensor('B') };   // one pressure sensor per hose
 const pressureInput=document.getElementById("pressureInput");
-function sensorFresh(){ return sensor.connected && sensor.psi!==null && (Date.now()-sensor.lastTime)<STALE_MS; }
+function sensorFresh(s){ const se=sensors[s]; return se.connected && se.psi!==null && (Date.now()-se.lastTime)<STALE_MS; }
+function anySensorFresh(){ return sensorFresh('A')||sensorFresh('B'); }
 function scaleFresh(s){ const sc=scales[s]; return sc.connected && sc.weight!==null && (Date.now()-sc.lastTime)<STALE_MS; }
-function anyLive(){ return sensorFresh()||scaleFresh('A')||scaleFresh('B'); }
+function anyLive(){ return anySensorFresh()||scaleFresh('A')||scaleFresh('B'); }
 
 // ── CALIBRATION ────────────────────────────────────────────────────────────
 const CAL={ A:{a:2.353067e-8,b:2.109069e-3,c:2.108834e-2,hinge:20,slope:0.75775},
@@ -254,30 +384,115 @@ function tankPct(w){ if(w===null) return null; return Math.max(0,Math.min(100,(w
 
 // ── ACTIVE SOURCE / PSI ────────────────────────────────────────────────────
 function activeSource(){
-  if(sensorFresh()) return { psi:sensor.psi, name:"Pressure sensor" };
-  if(scaleFresh('A') && scaleFresh('B')) { const aw=(scales.A.weight+scales.B.weight)/2; return { psi:weightToPSI(aw), name:"Scales A+B avg", aw }; }
-  if(scaleFresh('A')) return { psi:weightToPSI(scales.A.weight), name:"Scale A only" };
-  if(scaleFresh('B')) return { psi:weightToPSI(scales.B.weight), name:"Scale B only" };
-  return { psi:parseFloat(pressureInput.value), name:"Manual" };
+  const sa=sensorFresh('A'), sb=sensorFresh('B');
+  if(sa && sb) return { psi:(sensors.A.psi+sensors.B.psi)/2, name:"Pressure sensors A+B avg", key:"srcSensorsAvg" };
+  if(sa) return { psi:sensors.A.psi, name:"Pressure sensor A", key:"srcSensorA" };
+  if(sb) return { psi:sensors.B.psi, name:"Pressure sensor B", key:"srcSensorB" };
+  if(scaleFresh('A') && scaleFresh('B')) { const aw=(scales.A.weight+scales.B.weight)/2; return { psi:weightToPSI(aw), name:"Scales A+B avg", key:"srcScalesAvg", aw }; }
+  if(scaleFresh('A')) return { psi:weightToPSI(scales.A.weight), name:"Scale A only", key:"srcScaleA" };
+  if(scaleFresh('B')) return { psi:weightToPSI(scales.B.weight), name:"Scale B only", key:"srcScaleB" };
+  return { psi:parseFloat(pressureInput.value), name:"Manual", key:"srcManual" };
 }
 function activePSI(){ return activeSource().psi; }
 
 // ── TIMING (rAF; pressure latched per count) ───────────────────────────────
-let current=20, running=false, phase=0, lastFrameTime=null, rafId=null, cyclePSI=200, criticalActive=false;
+let current=20, running=false, phase=0, lastFrameTime=null, rafId=null, cyclePSI=200, criticalActive=false, prevStale=false;
 function computeDelay(x){ if(!isFinite(x)||x<=0) return Infinity; return 484.07*Math.pow(x,-1.034); }
-function speakNumber(n){ if(!("speechSynthesis" in window)) return; window.speechSynthesis.cancel();
-  const m=new SpeechSynthesisUtterance(String(n)); m.rate=1.0; window.speechSynthesis.speak(m); }
+// ── VOICE / LANGUAGE (uses the phone's installed voices; choice saved per device) ──
+let voiceList=[], selVoiceURI='';
+try{ selVoiceURI=localStorage.getItem('bemVoiceURI')||''; }catch(e){}
+function selectedVoice(){ return voiceList.find(v=>v.voiceURI===selVoiceURI)||null; }
+function sayVoiced(text){ if(!("speechSynthesis" in window)) return; window.speechSynthesis.cancel();
+  const m=new SpeechSynthesisUtterance(String(text)); m.rate=1.0; const v=selectedVoice(); if(v){ m.voice=v; m.lang=v.lang; } window.speechSynthesis.speak(m); }
+function speakNumber(n){ sayVoiced(n); }
+function renderVoiceOptions(){ const sel=document.getElementById("voiceSelect"); if(!sel) return;
+  sel.innerHTML='<option value="">Default voice</option>'+voiceList.map(v=>'<option value="'+v.voiceURI+'">'+v.name+' ('+v.lang+')</option>').join('');
+  sel.value=selVoiceURI; }
+function loadVoices(){ voiceList=("speechSynthesis" in window)?window.speechSynthesis.getVoices():[]; renderVoiceOptions(); }
+if("speechSynthesis" in window){ loadVoices(); try{ window.speechSynthesis.onvoiceschanged=loadVoices; }catch(e){} }
+
+// ── LANGUAGE (operator UI text; the job-site troubleshooting guide stays English) ──
+let lang='en'; try{ lang=localStorage.getItem('bemLang')||'en'; }catch(e){}
+const I18N={
+ en:{ title:"Shot Counter — Ratio", help:"? Help", count:"Count", pressure:"Pressure", start:"Start", stop:"Stop",
+   startingSpoken:"Starting", close:"Close", setTitle:"Language & Voice", langLabel:"Language", voiceLabel:"Countdown voice",
+   voiceTest:"Test voice", setDesc:"Pick the app language and the countdown voice. Saved on this phone.",
+   manualEntry:"Manual entry", full:"full", tempoEachCount:"tempo set each count",
+   holdingLast:"⚠ Holding last pressure — scales not updating",
+   alertStale:"Scales not updating — count is holding the last pressure",
+   alertRatioPre:"A:B ratio off >", alertRatioSuf:"% — possible closed valve or clog",
+   stSearching:"Searching…", stConnecting:"Connecting…", stConnected:"Connected", stReconnecting:"Reconnecting…",
+   stReconnected:"Reconnected", stNoDevice:"No device selected", stError:"Error", stNoBluetooth:"No Bluetooth",
+   stNotConnected:"Not connected", notUpdating:"not updating", choosing:"Choosing…", optional:"Optional",
+   connect:"Connect", disconnect:"Disconnect", sensor:"Sensor", tankA:"A-side", tankB:"B-side",
+   devScales:"Devices — connect scales one at a time", devSensors:"Pressure sensors — optional, one per hose (connect one at a time)",
+   download:"Download data (CSV)", screenOn:"Keep screen on", ratioHead:"A : B Ratio (cumulative since Start)",
+   ratioConnectBoth:"Connect both scales", ratioConnectBothForRatio:"Connect both scales for ratio", ratioWarming:"OK (warming up)",
+   ratioOK:"OK", ratioOffLabel:"OFF by", checkValves:"check valves/gun", usedA:"Used A", usedB:"Used B",
+   srcSensorsAvg:"Pressure sensors A+B avg", srcSensorA:"Pressure sensor A", srcSensorB:"Pressure sensor B",
+   srcScalesAvg:"Scales A+B avg", srcScaleA:"Scale A only", srcScaleB:"Scale B only", srcManual:"Manual",
+   calloutSummary:"How to set up & connect the scales", moreHelp:"More help →",
+   calloutSteps:"<li>Open in <b>Bluefy</b> (iPhone) or <b>Chrome</b> (Android) with <b>Bluetooth ON</b>; allow Bluetooth when asked.</li><li><b>Turn each scale on</b> — hold its power button until the display lights up. Turn the cordless remotes off.</li><li>Tap <b>Connect A</b>, pick the scale (<b>LMC-210</b>) from the list, then <b>Connect B</b> — one at a time.</li><li>Keep the phone <b>within a few feet of the scales</b> for the strongest signal.</li>" },
+ es:{ title:"Contador de Disparos — Proporción", help:"? Ayuda", count:"Conteo", pressure:"Presión", start:"Iniciar", stop:"Detener",
+   startingSpoken:"Comenzando", close:"Cerrar", setTitle:"Idioma y voz", langLabel:"Idioma", voiceLabel:"Voz del conteo",
+   voiceTest:"Probar voz", setDesc:"Elige el idioma de la app y la voz del conteo. Se guarda en este teléfono.",
+   manualEntry:"Entrada manual", full:"lleno", tempoEachCount:"ritmo fijado en cada conteo",
+   holdingLast:"⚠ Manteniendo la última presión — las básculas no se actualizan",
+   alertStale:"Las básculas no se actualizan — el conteo usa la última presión",
+   alertRatioPre:"Proporción A:B desviada >", alertRatioSuf:"% — posible válvula cerrada u obstrucción",
+   stSearching:"Buscando…", stConnecting:"Conectando…", stConnected:"Conectado", stReconnecting:"Reconectando…",
+   stReconnected:"Reconectado", stNoDevice:"Ningún dispositivo", stError:"Error", stNoBluetooth:"Sin Bluetooth",
+   stNotConnected:"No conectado", notUpdating:"no se actualiza", choosing:"Eligiendo…", optional:"Opcional",
+   connect:"Conectar", disconnect:"Desconectar", sensor:"Sensor", tankA:"Lado A", tankB:"Lado B",
+   devScales:"Dispositivos — conecta las básculas una a la vez", devSensors:"Sensores de presión — opcional, uno por manguera (uno a la vez)",
+   download:"Descargar datos (CSV)", screenOn:"Mantén la pantalla encendida", ratioHead:"Proporción A : B (acumulada desde Iniciar)",
+   ratioConnectBoth:"Conecta ambas básculas", ratioConnectBothForRatio:"Conecta ambas básculas para la proporción", ratioWarming:"OK (calentando)",
+   ratioOK:"OK", ratioOffLabel:"Desviada", checkValves:"revisa válvulas/pistola", usedA:"Usado A", usedB:"Usado B",
+   srcSensorsAvg:"Prom. sensores A+B", srcSensorA:"Sensor de presión A", srcSensorB:"Sensor de presión B",
+   srcScalesAvg:"Prom. básculas A+B", srcScaleA:"Solo báscula A", srcScaleB:"Solo báscula B", srcManual:"Manual",
+   calloutSummary:"Cómo configurar y conectar las básculas", moreHelp:"Más ayuda →",
+   calloutSteps:"<li>Abre en <b>Bluefy</b> (iPhone) o <b>Chrome</b> (Android) con el <b>Bluetooth ENCENDIDO</b>; permite el Bluetooth cuando lo pida.</li><li><b>Enciende cada báscula</b> — mantén presionado su botón de encendido hasta que la pantalla se ilumine. Apaga los controles remotos.</li><li>Toca <b>Conectar A</b>, elige la báscula (<b>LMC-210</b>) de la lista, luego <b>Conectar B</b> — una a la vez.</li><li>Mantén el teléfono <b>a pocos pies de las básculas</b> para la mejor señal.</li>" },
+ ht:{ title:"Kontè Tir — Pwopòsyon", help:"? Èd", count:"Kontaj", pressure:"Presyon", start:"Kòmanse", stop:"Kanpe",
+   startingSpoken:"N ap kòmanse", close:"Fèmen", setTitle:"Lang & Vwa", langLabel:"Lang", voiceLabel:"Vwa kontaj la",
+   voiceTest:"Teste vwa", setDesc:"Chwazi lang app la ak vwa kontaj la. Sere sou telèfòn sa a.",
+   manualEntry:"Antre manyèl", full:"plen", tempoEachCount:"vitès fikse chak kontaj",
+   holdingLast:"⚠ N ap kenbe dènye presyon an — balans yo pa mete ajou",
+   alertStale:"Balans yo pa mete ajou — kontaj la ap sèvi ak dènye presyon an",
+   alertRatioPre:"Pwopòsyon A:B pa bon >", alertRatioSuf:"% — petèt yon valv fèmen oswa yon blokaj",
+   stSearching:"Ap chèche…", stConnecting:"Ap konekte…", stConnected:"Konekte", stReconnecting:"Ap rekonekte…",
+   stReconnected:"Rekonekte", stNoDevice:"Pa gen aparèy", stError:"Erè", stNoBluetooth:"Pa gen Bluetooth",
+   stNotConnected:"Pa konekte", notUpdating:"pa mete ajou", choosing:"Ap chwazi…", optional:"Opsyonèl",
+   connect:"Konekte", disconnect:"Dekonekte", sensor:"Sansè", tankA:"Bò A", tankB:"Bò B",
+   devScales:"Aparèy — konekte balans yo youn apre lòt", devSensors:"Sansè presyon — opsyonèl, yon pou chak flèksib (youn apre lòt)",
+   download:"Telechaje done (CSV)", screenOn:"Kenbe ekran an limen", ratioHead:"Pwopòsyon A : B (kimile depi Kòmanse)",
+   ratioConnectBoth:"Konekte toude balans yo", ratioConnectBothForRatio:"Konekte toude balans yo pou pwopòsyon", ratioWarming:"OK (ap chofe)",
+   ratioOK:"OK", ratioOffLabel:"Pa bon", checkValves:"tcheke valv/pistolè", usedA:"Itilize A", usedB:"Itilize B",
+   srcSensorsAvg:"Mwayèn sansè A+B", srcSensorA:"Sansè presyon A", srcSensorB:"Sansè presyon B",
+   srcScalesAvg:"Mwayèn balans A+B", srcScaleA:"Balans A sèlman", srcScaleB:"Balans B sèlman", srcManual:"Manyèl",
+   calloutSummary:"Kijan pou konfigire & konekte balans yo", moreHelp:"Plis èd →",
+   calloutSteps:"<li>Louvri nan <b>Bluefy</b> (iPhone) oswa <b>Chrome</b> (Android) ak <b>Bluetooth LIMEN</b>; bay pèmisyon Bluetooth lè li mande.</li><li><b>Limen chak balans</b> — kenbe bouton pouvwa a jiskaske ekran an limen. Etenn kontwòl yo.</li><li>Peze <b>Connect A</b>, chwazi balans lan (<b>LMC-210</b>) nan lis la, epi <b>Connect B</b> — youn apre lòt.</li><li>Kenbe telèfòn nan <b>toupre balans yo</b> pou pi bon siyal la.</li>" }
+};
+function t(k){ const d=I18N[lang]||I18N.en; return (d&&d[k]!=null)?d[k]:(I18N.en[k]!=null?I18N.en[k]:k); }
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ const v=t(el.getAttribute('data-i18n')); if(v!=null) el.textContent=v; });
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{ const v=t(el.getAttribute('data-i18n-html')); if(v!=null) el.innerHTML=v; });
+  ['A','B'].forEach(s=>{ if(scales[s]) scaleBtn(s).textContent=t(scales[s].connected?'disconnect':'connect')+" "+s;
+                         if(sensors[s]) sensorBtn(s).textContent=(sensors[s].connected?t('disconnect'):t('sensor'))+" "+s; });
+  if(typeof updateUI==='function') updateUI();
+}
 function frameStep(ts){
   if(!running){ rafId=null; return; }
   if(lastFrameTime===null) lastFrameTime=ts;
-  const dt=(ts-lastFrameTime)/1000; lastFrameTime=ts;
+  let dt=(ts-lastFrameTime)/1000; lastFrameTime=ts;
+  if(dt>1.0) dt=0;                        // long stall (backgrounded/jank): resync, do NOT burst the count
   phase += dt/computeDelay(cyclePSI);
-  while(phase>=1.0){
-    phase-=1.0;
+  if(phase>=1.0){                          // at most one count per frame -> steady cadence, never a burst
+    phase-=1.0; if(phase>=1.0) phase=0;    // still behind? resync instead of rapid-firing the backlog
     document.getElementById("count").textContent=current;
     speakNumber(current);
     current--;
-    if(current<0){ current=20; cyclePSI=activePSI(); if(criticalActive) beep(); }  // re-latch + alert only at bottom
+    if(current<0){ current=20; const p=activePSI(); if(isFinite(p)&&p>0) cyclePSI=p; if(criticalActive) beep(); }  // re-latch (keep last good if none), alert only at bottom
   }
   rafId=requestAnimationFrame(frameStep);
 }
@@ -286,7 +501,7 @@ function startCountdown(){ if(running) return; running=true; current=20; phase=0
 function stopCountdown(){ running=false; disableWakeLock(); if(rafId!==null){ cancelAnimationFrame(rafId); rafId=null; }
   if("speechSynthesis" in window) window.speechSynthesis.cancel(); }
 document.getElementById("startButton").addEventListener("click", ()=>{ ensureAudio();
-  if("speechSynthesis" in window){ window.speechSynthesis.cancel(); const m=new SpeechSynthesisUtterance("Starting"); m.rate=1.0; window.speechSynthesis.speak(m); }
+  sayVoiced(t('startingSpoken'));
   startCountdown(); });
 document.getElementById("stopButton").addEventListener("click", stopCountdown);
 
@@ -308,59 +523,76 @@ function evalRatio(){
 
 // ── BLE: PT-800 sensor ─────────────────────────────────────────────────────
 const PT800_SERVICE=0xFCFD, PT800_PREFIX="DPGW", PRES_TAG="AT+PRES=", TAG_START=2, VAL_START=18;
-const sensorButton=document.getElementById("sensorButton"), sensorStatusEl=document.getElementById("sensorStatus");
-function setSensorStatus(msg){ sensorStatusEl.textContent=msg; }
+function sensorBtn(s){ return document.getElementById('sensor'+s+'Button'); }
+function setSensorStatus(s,msg){ document.getElementById('sensor'+s+'Status').textContent=msg; }
 function decodePressure(dv){ if(dv.byteLength<VAL_START+2) return null; let t="";
   for(let i=TAG_START;i<TAG_START+PRES_TAG.length;i++) t+=String.fromCharCode(dv.getUint8(i));
   if(t!==PRES_TAG) return null; return dv.getUint16(VAL_START,false)/10; }
-function onPressureNotify(e){ const p=decodePressure(e.target.value); if(p===null) return; sensor.psi=p; sensor.lastTime=Date.now(); }
-async function attachSensor(server){ const svc=await server.getPrimaryService(PT800_SERVICE); const ch=await svc.getCharacteristic(PT800_SERVICE);
-  await ch.startNotifications(); ch.addEventListener("characteristicvaluechanged", onPressureNotify); }
-async function connectSensor(){
-  if(!navigator.bluetooth){ setSensorStatus("No Bluetooth"); return; }
-  try{ setSensorStatus("Choosing…");
-    sensor.device=await navigator.bluetooth.requestDevice({ filters:[{namePrefix:PT800_PREFIX}], optionalServices:[PT800_SERVICE] });
-    sensor.want=true; sensor.device.addEventListener("gattserverdisconnected", onSensorDrop);
-    setSensorStatus("Connecting…"); const server=await sensor.device.gatt.connect(); await attachSensor(server);
-    sensor.connected=true; sensorButton.textContent="Disconnect Sensor"; sensorButton.classList.add("connected"); setSensorStatus("Connected");
-  }catch(err){ setSensorStatus(err&&err.name==="NotFoundError"?"No device selected":"Error"); }
+function onPressureNotify(s,e){ const p=decodePressure(e.target.value); if(p===null) return; sensors[s].psi=p; sensors[s].lastTime=Date.now(); }
+async function attachSensor(s,server){ const svc=await server.getPrimaryService(PT800_SERVICE); const ch=await svc.getCharacteristic(PT800_SERVICE);
+  await ch.startNotifications(); ch.addEventListener("characteristicvaluechanged", e=>onPressureNotify(s,e)); }
+async function connectSensor(s){ const se=sensors[s];
+  if(!navigator.bluetooth){ setSensorStatus(s,t('stNoBluetooth')); return; }
+  try{ setSensorStatus(s,t('choosing'));
+    se.device=await navigator.bluetooth.requestDevice({ filters:[{namePrefix:PT800_PREFIX}], optionalServices:[PT800_SERVICE] });
+    se.want=true; se.device.addEventListener("gattserverdisconnected", ()=>onSensorDrop(s));
+    setSensorStatus(s,t('stConnecting')); const server=await se.device.gatt.connect(); await attachSensor(s,server);
+    se.connected=true; sensorBtn(s).textContent=t('disconnect')+" "+s; sensorBtn(s).classList.add("connected"); setSensorStatus(s,t('stConnected'));
+  }catch(err){ setSensorStatus(s, err&&err.name==="NotFoundError"?t('stNoDevice'):t('stError')); }
 }
-function onSensorDrop(){ sensor.connected=false; sensor.psi=null;
-  if(sensor.want && sensor.device){ setSensorStatus("Reconnecting…"); reconnectSensor(); }
-  else { sensorButton.textContent="Connect Pressure Sensor"; sensorButton.classList.remove("connected"); setSensorStatus("Optional — direct PSI"); } }
-async function reconnectSensor(){ if(!sensor.want||!sensor.device) return;
-  try{ const server=await sensor.device.gatt.connect(); await attachSensor(server); sensor.connected=true; setSensorStatus("Reconnected"); }
-  catch(e){ setTimeout(reconnectSensor,2000); } }
-sensorButton.addEventListener("click", ()=>{ if(sensor.device && sensor.device.gatt.connected){ sensor.want=false; sensor.device.gatt.disconnect(); } else connectSensor(); });
+function onSensorDrop(s){ const se=sensors[s]; se.connected=false; se.psi=null;
+  if(se.want && se.device){ setSensorStatus(s,t('stReconnecting')); reconnectSensor(s); }
+  else { sensorBtn(s).textContent=t('sensor')+" "+s; sensorBtn(s).classList.remove("connected"); setSensorStatus(s,t('optional')); } }
+async function reconnectSensor(s){ const se=sensors[s]; if(!se.want||!se.device) return;
+  try{ const server=await se.device.gatt.connect(); await attachSensor(s,server); se.connected=true; setSensorStatus(s,t('stReconnected')); }
+  catch(e){ setTimeout(()=>reconnectSensor(s),2000); } }
+sensorBtn('A').addEventListener("click", ()=>{ const d=sensors.A.device; if(d&&d.gatt.connected){ sensors.A.want=false; d.gatt.disconnect(); } else connectSensor('A'); });
+sensorBtn('B').addEventListener("click", ()=>{ const d=sensors.B.device; if(d&&d.gatt.connected){ sensors.B.want=false; d.gatt.disconnect(); } else connectSensor('B'); });
 
 // ── BLE: LMC-210 scales ────────────────────────────────────────────────────
 const TARGET_SERVICE='0003cdd0-0000-1000-8000-00805f9b0131', TARGET_CHAR='0003cdd1-0000-1000-8000-00805f9b0131';
+const NEW_SERVICES=['0000fff0-0000-1000-8000-00805f9b34fb','0000fcfd-0000-1000-8000-00805f9b34fb'];  // new model
+const GRAMS_PER_LB=453.592;
 function bytesToAscii(dv){ let s=''; for(let i=0;i<dv.byteLength;i++){ const b=dv.getUint8(i);
   if(b===0x0d) continue; if(b===0x0a){ s+='\n'; continue; } s+=(b>=0x20&&b<0x7f)?String.fromCharCode(b):'.'; } return s; }
-function parseFor(side){ return function(dv){ const sc=scales[side]; sc.buf+=bytesToAscii(dv); if(sc.buf.length>4000) sc.buf=sc.buf.slice(-4000);
+// Route each notification to the parser for that scale's detected model.
+function parseFor(side){ return function(dv){ if(scales[side].model==='new') parseNewFor(side,dv); else parseOldFor(side,dv); }; }
+// OLD model: ASCII "AT+WEIG=+dddddd" raw count -> quad + hinge + trim.
+function parseOldFor(side,dv){ const sc=scales[side]; sc.buf+=bytesToAscii(dv); if(sc.buf.length>4000) sc.buf=sc.buf.slice(-4000);
   const m=[...sc.buf.matchAll(/WEIG=[^+\-]*([+-]\d{6})/g)]; if(!m.length) return;
   const raw=parseInt(m[m.length-1][1],10); const c=CAL[side];
   let d=c.a*raw*raw+c.b*raw+c.c; d = d<=c.hinge ? d : c.hinge+c.slope*(d-c.hinge);
-  sc.weight=trim(d); sc.lastTime=Date.now(); }; }
+  sc.weight=trim(d); sc.lastTime=Date.now(); }
+// NEW model: binary frame  AA 55 <len16> ... <weight uint32 BE @offset 9, grams> ... 0D 0A.
+function parseNewFor(side,dv){ const sc=scales[side]; const n=dv.byteLength;
+  for(let i=0;i+15<=n;i++){ if(dv.getUint8(i)===0xaa && dv.getUint8(i+1)===0x55){ const len=(dv.getUint8(i+2)<<8)|dv.getUint8(i+3);
+    if(len>=15 && len<=64 && i+len<=n && dv.getUint8(i+len-2)===0x0d && dv.getUint8(i+len-1)===0x0a){
+      sc.weight=dv.getUint32(i+9,false)/GRAMS_PER_LB; sc.lastTime=Date.now(); return; } } } }
 function scaleBtn(side){ return document.getElementById('scale'+side+'Button'); }
 function setScaleStatus(side,msg,cls){ const el=document.getElementById('status'+side); el.className='tankStatus '+(cls||''); el.textContent=msg; }
-async function attachScale(side,server){ const svc=await server.getPrimaryService(TARGET_SERVICE);
-  let ch; try{ ch=await svc.getCharacteristic(TARGET_CHAR); }catch(e){ const cs=await svc.getCharacteristics(); ch=cs.find(x=>x.properties.notify||x.properties.indicate); }
-  await ch.startNotifications(); ch.addEventListener("characteristicvaluechanged", ev=>parseFor(side)(ev.target.value)); }
+async function attachScale(side,server){
+  // Old model first; if its service isn't present, subscribe to the new model's notify channels.
+  try{ const svc=await server.getPrimaryService(TARGET_SERVICE); scales[side].model='old';
+    let ch; try{ ch=await svc.getCharacteristic(TARGET_CHAR); }catch(e){ const cs=await svc.getCharacteristics(); ch=cs.find(x=>x.properties.notify||x.properties.indicate); }
+    await ch.startNotifications(); ch.addEventListener("characteristicvaluechanged", ev=>parseFor(side)(ev.target.value)); return; }catch(e){}
+  scales[side].model='new'; let sub=false;
+  for(const s of NEW_SERVICES){ try{ const svc=await server.getPrimaryService(s); const cs=await svc.getCharacteristics();
+    for(const ch of cs){ if(ch.properties.notify||ch.properties.indicate){ await ch.startNotifications(); ch.addEventListener("characteristicvaluechanged", ev=>parseFor(side)(ev.target.value)); sub=true; } } }catch(e){} }
+  if(!sub) throw new Error("no data channel"); }
 async function connectScale(side){ const sc=scales[side];
-  if(!navigator.bluetooth){ setScaleStatus(side,"No Bluetooth","err"); return; }
-  try{ setScaleStatus(side,"Searching…");
-    sc.device=await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices:[TARGET_SERVICE] });
+  if(!navigator.bluetooth){ setScaleStatus(side,t('stNoBluetooth'),"err"); return; }
+  try{ setScaleStatus(side,t('stSearching'));
+    sc.device=await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices:[TARGET_SERVICE, ...NEW_SERVICES] });
     sc.want=true; sc.device.addEventListener("gattserverdisconnected", ()=>onScaleDrop(side));
-    setScaleStatus(side,"Connecting…"); const server=await sc.device.gatt.connect(); await attachScale(side,server);
-    sc.connected=true; scaleBtn(side).textContent="Disconnect "+side; scaleBtn(side).classList.add("connected"); setScaleStatus(side,"Connected","ok");
-  }catch(err){ setScaleStatus(side, err&&err.name==="NotFoundError"?"No device selected":"Error", "err"); }
+    setScaleStatus(side,t('stConnecting')); const server=await sc.device.gatt.connect(); await attachScale(side,server);
+    sc.connected=true; scaleBtn(side).textContent=t('disconnect')+" "+side; scaleBtn(side).classList.add("connected"); setScaleStatus(side,t('stConnected'),"ok");
+  }catch(err){ setScaleStatus(side, err&&err.name==="NotFoundError"?t('stNoDevice'):t('stError'), "err"); }
 }
 function onScaleDrop(side){ const sc=scales[side]; sc.connected=false; sc.weight=null;
-  if(sc.want && sc.device){ setScaleStatus(side,"Reconnecting…","err"); reconnectScale(side); }
-  else { scaleBtn(side).textContent="Connect "+side; scaleBtn(side).classList.remove("connected"); setScaleStatus(side,"Not connected"); } }
+  if(sc.want && sc.device){ setScaleStatus(side,t('stReconnecting'),"err"); reconnectScale(side); }
+  else { scaleBtn(side).textContent=t('connect')+" "+side; scaleBtn(side).classList.remove("connected"); setScaleStatus(side,t('stNotConnected')); } }
 async function reconnectScale(side){ const sc=scales[side]; if(!sc.want||!sc.device) return;
-  try{ const server=await sc.device.gatt.connect(); await attachScale(side,server); sc.connected=true; setScaleStatus(side,"Reconnected","ok"); }
+  try{ const server=await sc.device.gatt.connect(); await attachScale(side,server); sc.connected=true; setScaleStatus(side,t('stReconnected'),"ok"); }
   catch(e){ setTimeout(()=>reconnectScale(side),2000); } }
 scaleBtn('A').addEventListener("click", ()=>{ const d=scales.A.device; if(d&&d.gatt.connected){ scales.A.want=false; d.gatt.disconnect(); } else connectScale('A'); });
 scaleBtn('B').addEventListener("click", ()=>{ const d=scales.B.device; if(d&&d.gatt.connected){ scales.B.want=false; d.gatt.disconnect(); } else connectScale('B'); });
@@ -376,16 +608,30 @@ setInterval(reconnectWatchdog, 1000);
 let dataLog=[]; let logSourceName="Manual", logPsi=NaN;
 function logSample(){ if(!running) return;
   dataLog.push({ t:new Date().toISOString(), wA:scales.A.weight, wB:scales.B.weight,
-    uA:usedOf('A'), uB:usedOf('B'), psi:logPsi, src:logSourceName }); }
+    uA:usedOf('A'), uB:usedOf('B'), psi:logPsi, src:logSourceName,
+    psA:sensorFresh('A')?sensors.A.psi:null, psB:sensorFresh('B')?sensors.B.psi:null }); }
 setInterval(logSample, LOG_INTERVAL_MS);
 function num(v,d){ return (v===null||v===undefined||(typeof v==='number'&&!isFinite(v)))?'':(typeof v==='number'?v.toFixed(d):v); }
-document.getElementById("downloadBtn").addEventListener("click", ()=>{
-  if(!dataLog.length){ alert("No data yet — start a job first."); return; }
-  const cols=["time","weightA_lb","weightB_lb","pctA","pctB","usedA_lb","usedB_lb","psi","source"];
-  const rows=dataLog.map(d=>[d.t, num(d.wA,2), num(d.wB,2), num(tankPct(d.wA),0), num(tankPct(d.wB),0), num(d.uA,2), num(d.uB,2), num(d.psi,0), d.src]);
+document.getElementById("downloadBtn").addEventListener("click", async ()=>{
+  if(!dataLog.length){ alert("No data yet. Tap Start to begin logging, then come back and download after the job."); return; }
+  const cols=["time","weightA_lb","weightB_lb","pctA","pctB","usedA_lb","usedB_lb","sensorA_psi","sensorB_psi","psi_used","source"];
+  const rows=dataLog.map(d=>[d.t, num(d.wA,2), num(d.wB,2), num(tankPct(d.wA),0), num(tankPct(d.wB),0), num(d.uA,2), num(d.uB,2), num(d.psA,0), num(d.psB,0), num(d.psi,0), d.src]);
   const csv=[cols.join(","), ...rows.map(r=>r.join(","))].join("\n");
-  const blob=new Blob([csv],{type:"text/csv"}); const url=URL.createObjectURL(blob);
-  const a=document.createElement("a"); a.href=url; a.download="bem-ratio-log-"+Date.now()+".csv"; a.click(); URL.revokeObjectURL(url);
+  const fname="bem-ratio-log-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"-")+".csv";
+  const blob=new Blob([csv],{type:"text/csv"});
+  // Phones (esp. iOS/Bluefy) handle a share sheet far better than a hidden download link.
+  try{
+    const file=new File([blob], fname, {type:"text/csv"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:fname});
+      return;
+    }
+  }catch(err){ if(err && err.name==="AbortError") return; /* user cancelled the share sheet */ }
+  // Fallback for desktop / Android Chrome: normal download.
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  alert("Saved \""+fname+"\".\nAndroid: check your Downloads (and the download notification).\nComputer: your Downloads folder.");
 });
 
 // ── UI / WARNINGS (interval) ───────────────────────────────────────────────
@@ -394,32 +640,37 @@ function updateUI(){
   // tanks: weight + %
   for(const s of ['A','B']){ const sc=scales[s], w=sc.weight, fresh=scaleFresh(s);
     document.getElementById('w'+s).textContent = w!==null ? w.toFixed(1)+' lb' : '--';
-    const p=tankPct(w); document.getElementById('pct'+s).innerHTML = (w!==null && p!==null) ? p.toFixed(0)+'% full' : '&nbsp;';
-    if(fresh) setScaleStatus(s,"Connected","ok"); }
+    const p=tankPct(w); document.getElementById('pct'+s).innerHTML = (w!==null && p!==null) ? p.toFixed(0)+'% '+t('full') : '&nbsp;';
+    if(fresh) setScaleStatus(s,t('stConnected'),"ok"); else if(sc.connected) setScaleStatus(s,t('notUpdating'),"err"); }
 
   // active source -> pressure field
   const src=activeSource(); logSourceName=src.name; logPsi=isFinite(src.psi)?src.psi:NaN;
-  const live = sensorFresh()||scaleFresh('A')||scaleFresh('B');
+  const live = anySensorFresh()||scaleFresh('A')||scaleFresh('B');
   if(live){ pressureInput.readOnly=true;
     pressureInput.value = (running?cyclePSI:src.psi).toFixed(0);
-    sourceLine.textContent = "● " + src.name + (running ? " · tempo set each count" : " · " + src.psi.toFixed(0) + " psi");
+    sourceLine.textContent = "● " + t(src.key) + (running ? " · "+t('tempoEachCount') : " · " + src.psi.toFixed(0) + " psi");
     sourceLine.className="live";
-  } else { pressureInput.readOnly=false; sourceLine.textContent="Manual entry"; sourceLine.className="manual"; }
+  } else if(running){ pressureInput.readOnly=false;
+    sourceLine.textContent=t('holdingLast'); sourceLine.className="warn";
+  } else { pressureInput.readOnly=false; sourceLine.textContent=t('manualEntry'); sourceLine.className="manual"; }
 
   // ratio
   const r=evalRatio(); const rv=document.getElementById("ratioVal"), rs=document.getElementById("ratioState"), ul=document.getElementById("usedLine");
-  if(!r.avail){ rv.textContent="--"; rs.textContent=(scaleFresh('A')||scaleFresh('B'))?"Connect both scales for ratio":"Connect both scales"; rs.className="ratio-state na"; ul.textContent="Used A: -- · Used B: --"; }
+  if(!r.avail){ rv.textContent="--"; rs.textContent=(scaleFresh('A')||scaleFresh('B'))?t('ratioConnectBothForRatio'):t('ratioConnectBoth'); rs.className="ratio-state na"; ul.textContent=t('usedA')+": -- · "+t('usedB')+": --"; }
   else { rv.textContent = isFinite(r.ratio)? r.ratio.toFixed(2)+" : 1" : "A only";
-    ul.textContent = "Used A: "+r.uA.toFixed(2)+" lb · Used B: "+r.uB.toFixed(2)+" lb";
-    if(!r.enough){ rs.textContent="OK (warming up)"; rs.className="ratio-state na"; }
-    else if(r.alarm){ rs.textContent="⚠ OFF by "+(r.div*100).toFixed(0)+"% — check valves/gun"; rs.className="ratio-state bad"; }
-    else { rs.textContent="OK ("+(r.div*100).toFixed(0)+"%)"; rs.className="ratio-state ok"; } }
+    ul.textContent = t('usedA')+": "+r.uA.toFixed(2)+" lb · "+t('usedB')+": "+r.uB.toFixed(2)+" lb";
+    if(!r.enough){ rs.textContent=t('ratioWarming'); rs.className="ratio-state na"; }
+    else if(r.alarm){ rs.textContent="⚠ "+t('ratioOffLabel')+" "+(r.div*100).toFixed(0)+"% — "+t('checkValves'); rs.className="ratio-state bad"; }
+    else { rs.textContent=t('ratioOK')+" ("+(r.div*100).toFixed(0)+"%)"; rs.className="ratio-state ok"; } }
 
   // warnings
   const warnings=[]; let critical=false;
-  if(running && !live){ warnings.push("SCALES DISCONNECTED — do not trust the count"); critical=true; }
-  if(r.avail && r.alarm){ warnings.push("A:B ratio off >"+(RATIO_TOL*100).toFixed(0)+"% — possible closed valve or clog"); critical=true; }
-  criticalActive=critical;
+  const staleRunning = running && !live;   // scales known but not sending fresh data -> holding last pressure
+  if(staleRunning){ warnings.push(t('alertStale')); }
+  if(r.avail && r.alarm){ warnings.push(t('alertRatioPre')+(RATIO_TOL*100).toFixed(0)+t('alertRatioSuf')); critical=true; }
+  if(staleRunning && !prevStale) beep();   // one gentle beep the moment the feed goes stale (not repeated)
+  prevStale = staleRunning;
+  criticalActive = critical;               // only the ratio alarm re-beeps, and only at count-zero
   if(!warnings.length){ alertEl.style.display="none"; }
   else { alertEl.style.display="block"; alertEl.className = critical?"":"warn";
     document.getElementById("alertMain").textContent=(critical?"⚠ ":"")+warnings[0];
@@ -436,6 +687,20 @@ document.getElementById("infoButton").addEventListener("click", openInfo);
 document.getElementById("calloutHelp").addEventListener("click", openInfo);
 document.getElementById("infoClose").addEventListener("click", closeInfo);
 infoModal.addEventListener("click", e=>{ if(e.target===infoModal) closeInfo(); });
+
+// Settings (voice) modal
+const settingsModal=document.getElementById("settingsModal");
+document.getElementById("settingsButton").addEventListener("click", ()=>{ ensureAudio(); renderVoiceOptions(); settingsModal.classList.add("open"); });
+document.getElementById("settingsClose").addEventListener("click", ()=>settingsModal.classList.remove("open"));
+settingsModal.addEventListener("click", e=>{ if(e.target===settingsModal) settingsModal.classList.remove("open"); });
+document.getElementById("voiceSelect").addEventListener("change", e=>{ selVoiceURI=e.target.value; try{ localStorage.setItem('bemVoiceURI', selVoiceURI); }catch(_){} sayVoiced("Twenty. Nineteen."); });
+document.getElementById("voiceTest").addEventListener("click", ()=>sayVoiced("Twenty. Nineteen. Eighteen."));
+
+// Language selector
+const langSelect=document.getElementById("langSelect");
+langSelect.value=lang;
+langSelect.addEventListener("change", e=>{ lang=e.target.value; try{ localStorage.setItem('bemLang', lang); }catch(_){} applyLang(); });
+applyLang();   // apply saved language on load
 </script>
 </body>
 </html>
